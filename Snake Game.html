@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snake Game</title>
+    <style>
+        @font-face {
+            font-family: ArcadePixel;
+            src: url(./Font/ARCADECLASSIC.TTF);
+        }
+        #main {
+            margin: 20px;
+            text-align: center;
+        }
+        canvas {
+            border: 2px Solid rgb(255, 255, 255);
+            border-style: dashed;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+ <body>
+	<div id="main">
+        <canvas></canvas>
+    </div>
+    <script>
+        /*
+        Dev Note: 15/01/2019
+        1. Bugs to fix..
+            a) GenerateFood doesn't work as it should be. (Food generates in/on the snake sometimes)
+            b) IsSnakeDead isn't perfect yet.
+            c) Sounds don't play when game starts for the first time.
+            d) Sounds are .. uggghhhh!!
+        2. Whole code looks very messy! (Dev Needs Some Serious Practice On Coding!)
+        */
+
+        //Settings
+        //This feature is still has to be worked on/to be added because dev hasn't learned how use css yet. ('^>^ )
+
+        //Sounds..
+        var FoodSound = new Audio('./Sounds/Blop-Mark_DiAngelo-79054334.mp3');
+        var SnakeAteFoodSound = new Audio('./Sounds/Pling-KevanGC-1485374730.mp3');
+        var EndGameSound = new Audio('./Sounds/Minecraft-death-sound.mp3');
+        var SlowMoEnterSound = new Audio('./Sounds/Slow Motion Enter.mp3');
+        var SlowMoExitSound = new Audio('./Sounds/Slow Motion Exit.mp3');
+        var cantDoSound = new Audio('./Sounds/cant.mp3');
+        cantDoSound.volume = 0.5;
+        
+        var canv = document.querySelector('canvas');
+        canv.height = 600;
+        canv.width = 600;
+        canv.style.backgroundColor = 'rgb(41, 42, 61)';
+        var c = canv.getContext('2d');
+
+        function Box(x, y, vel) {
+            this.x = x;
+            this.y = y;
+            this.vel = vel;
+            this.height = undefined;
+            this.width = undefined;
+            this.dy = 0;
+            this.dx = 0;
+            this.color = CurrentSnakeClr;
+            this.turn_id = [];
+
+            this.draw = function() {
+                c.fillStyle = this.color;
+                c.fillRect(this.x, this.y, this.height, this.width);
+            }
+            
+            this.update = function() {
+                this.draw();
+                //Turning feature in this object..
+                if (this.turn_id.length != 0) {
+                    var turnPoint;
+                    var compareId = this.turn_id[0];
+                    turnPoints.forEach(function(i) {
+                        if(compareId == i.turn_id)
+                            turnPoint = i;
+                    });
+                    if (this.x == turnPoint.x && this.y == turnPoint.y) {
+                            var shift = false;
+                            this.turn_id.shift();
+                            switch(turnPoint.keyCode) {
+                                case 38: //Up
+                                    this.dx = 0;
+                                    this.dy = -1;
+                                    break;
+                                case 40: //Down
+                                    this.dx = 0;
+                                    this.dy = 1;
+                                    break;
+                                case 37: //Left
+                                    this.dx = -1;
+                                    this.dy = 0;
+                                    break;
+                                case 39: //Right
+                                    this.dx = 1;
+                                    this.dy = 0;
+                                    break;
+                            }
+                            turnPoint.crossed += 1;
+                            if (turnPoint.crossed == snake.length) {
+                                turnPoints.shift();
+                            }
+                    }
+                }
+                if (this.x > canv.width + 20) {
+                    this.x = -20;
+                } else if (this.x < -20) {
+                    this.x = canv.height + 20;
+                }
+
+                if (this.y > canv.height + 20) {
+                    this.y = -20;
+                } else if (this.y < -20) {
+                    this.y = canv.height + 20;
+                }
+
+                this.x += this.dx * this.vel;
+                this.y += this.dy * this.vel;
+            }
+        }
+
+        //Generates Snake (only in x direc.)     max          - min + min
+        var snake = [];
+        var turnPoints = [];
+        var CurrentSnakeClr = 'White';
+        function GenerateSnake(length, vel) {
+            for (var i = snake.length; i > 0; i--) {
+                snake.pop();
+            }
+            turnPoints = [];
+            var x = Math.floor(Math.random() * ((canv.width - 20*length - 300) - 100) + 100);
+            x = x - (x % 20);
+            var y = Math.floor(Math.random() * ((canv.height - 100) - 100) + 100);
+            y = y - (y % 20);
+            for (var i = 0; i < length; i++) {
+                x += 20;
+                snake[i] = new Box(x, y, vel);
+                snake[i].dx = 1;
+                snake[i].width = 19;
+                snake[i].height = 19;
+            }
+        }
+
+        GenerateSnake(5, 4);
+
+        //To turn our little snake fella! :)
+        var turn_id = 1;
+        function turnPoint(x, y, keyCode, turn_id) {
+            this.x = x;
+            this.y = y;
+            this.keyCode = keyCode;
+            this.crossed = 0;
+            this.turn_id = turn_id;
+        }
+
+        var captureTurnCoordinates = false;
+        var keyCode = 0;
+        window.onkeydown = function(e) {
+	        if (!Paused) {
+	            if (captureTurnCoordinates == false)
+	                keyCode = e.keyCode;
+	            if ( (keyCode == 38 || keyCode == 40) && snake[snake.length - 1].dy == 0 && !SnakeDied)
+	                captureTurnCoordinates = true;
+	            else if ( (keyCode == 37 || keyCode == 39) && snake[snake.length - 1].dx == 0 && !SnakeDied)
+	                captureTurnCoordinates = true;
+	            // else
+	            // 	cantDoSound.play();
+        	}
+
+            if (e.keyCode == 83 && sKeyPress) {
+                if (SlowMotion.avail != 0 && !UseSlowMo) {
+                    startSlowMo();
+                } else if (SlowMotion.avail == 0 && !SlowMoPeek) {
+                    SlowMo = true;
+                    SlowMoPeek = true;
+                    cantDoSound.pause();
+                    cantDoSound.play();
+                } else {
+                	if (SlowMotion.avail != 0 && UseSlowMo != 0) {
+            			SlowMoExitSound.pause();
+            			SlowMoExitSound.play();
+                	}
+                    UseSlowMo = false;
+                    stopSlowMo = true;
+                }
+            }
+            
+            if (e.keyCode == 70) {
+                if (!drawFPS)
+                    drawFPS = true;
+                else
+                    drawFPS = false;
+            }
+
+            if (e.keyCode == 32 && !SnakeDied && allowPaush) {
+            	PauseGame();
+            }
+
+            if (e.keyCode == 67) {
+                ChangeColor();
+            }
+
+            if (e.keyCode == 88) {
+                if (colorChange == undefined)
+                    AutoColorChange();
+                else {
+                    clearInterval(colorChange);
+                    colorChange = undefined;
+                }
+            }
+        }
+        //Color change
+        function ChangeColor() {
+            let colors = ['White', 'LightGreen', 'Pink', 'rgb(202, 123, 213)', 'Black'];
+            let i = 0;
+            for (var c = 0; c < colors.length; c++) {
+                i++;
+                if (colors[c] == CurrentSnakeClr) {
+                    if (i > colors.length - 1)
+                        i = 0;
+                    CurrentSnakeClr = colors[i];
+                    break;
+                }
+            }
+            snake.forEach(function(i) {
+        			i.color = CurrentSnakeClr;
+        	});
+        }
+        //Auto Color Change :P
+        let colorChange;
+        function AutoColorChange() {
+            colorChange = setInterval(ChangeColor, 150);
+        }
+
+        // Pause feature
+        var Paused = false, allowPaush = true;
+        var RecordGameStatus = {};
+        function PauseGame() {
+        	if (!Paused){
+        		Paused = true;
+        		sKeyPress = false;
+        		ch = 2;
+        		setTimeout(function() {
+        			PauseWarn = true;
+        		}, 500);
+        		RecordGameStatus.snake_vel = snake[0].vel;
+        		snake.forEach(function(i) {
+        			i.vel = 0;
+        		});
+        	} else {
+        		allowPaush = false;
+        		PauseWarn = false;
+        		setTimeout(function() {
+        			allowPaush = true;
+        		}, 10000);
+        		Paused = false;
+        		sKeyPress = true;
+        		count = 0;
+        		ch = 0;
+        		clearInterval(tsI);
+        		snake.forEach(function(i) {
+        			i.vel = RecordGameStatus.snake_vel;
+        		});
+        	}
+        }
+        var PauseWarn;
+        function PauseMssg() {
+	        if (PauseWarn) {
+	        	c.font = '20px ArcadePixel';
+			    c.fillStyle = 'Black';
+				c.fillText('When you continue, you will not be able to pause', 77, 352);
+				c.fillText('the game for the next 10 seconds.', 133, 369);
+			    c.fillStyle = 'yellow';
+				c.fillText('When you continue, you will not be able to pause', 75, 350);
+				c.fillText('the game for the next 10 seconds.', 130, 367);
+	        }
+        	if (ch > 0) {
+         		c.font = '50px ArcadePixel';
+		        c.fillStyle = 'Black';
+		        c.fillText('Paused', 217, 326);
+		        c.fillStyle = 'white';
+				c.fillText('Paused', 213, 322);
+			}
+
+            if (count == 0) {
+                count++;
+                tsI = setInterval(function() {
+                    if (ch >= 0)
+                        ch--;
+                    else
+                        ch = 2;
+                }, 400);
+            }
+        }
+
+        //Slow motion feature
+        var sKeyPress = true, SlowMo = false, UseSlowMo = false, HideSlowMoBar = false, stopSlowMo = false, SlowMoPeek = false;
+        var SlowMotion = {
+            avail : 50,
+            barHeight : 1,
+            barClrs : ['#ff4b30', '#ffc130', '#fffc60', '#9dff5b'],
+            barClr : undefined,
+            UpdateBarClr : function() {
+                if (this.avail > 60)
+                    this.barClr = this.barClrs[3];
+                else if (this.avail > 40)
+                    this.barClr = this.barClrs[2];
+                else if (this.avail > 20)
+                    this.barClr = this.barClrs[1];
+                else
+                    this.barClr = this.barClrs[0];
+            },
+            DrawBar : function(avail) {
+                this.UpdateBarClr();
+                if (this.avail < 3)
+                    avail = 3;
+                let width = Math.floor(canv.width/100 * avail);
+                this.UpdateBarClr();
+                c.fillStyle = 'rgba(41, 42, 61, 0.5)';
+                c.fillRect(0, canv.height - this.barHeight, canv.width, this.barHeight);
+                c.fillStyle = this.barClr;
+                c.fillRect(0, canv.height - this.barHeight, width, this.barHeight);
+            },
+            UsageUpate : function() {
+                if (this.avail != 0) {
+                    if (this.barHeight <= 7) {
+                        this.barHeight += 0.5;
+                        this.avail -= 0.25;
+                    } else if (this.avail != 0)
+                        this.avail -= 0.25;
+                } else {
+                	SlowMoExitSound.pause();
+                	SlowMoExitSound.play();
+                    UseSlowMo = false;
+                    stopSlowMo = true;
+                }
+                this.DrawBar(this.avail);
+            },
+            HideBar : function() {
+                if (this.barHeight >= 0) {
+                    this.barHeight -= 0.5;
+                    this.DrawBar(this.avail);
+                } else {
+                    if (!stopSlowMo)
+                        SlowMo = false;
+                    HideSlowMoBar = false;
+                }
+            },
+            Peek : function() {
+                HideSlowMoBar = false;
+                let PeekValue;
+                if(this.avail == 0) {
+                    PeekValue = 7;
+                } else {
+                    PeekValue = 5;
+                }
+                this.DrawBar(this.avail);
+                if (this.barHeight <= PeekValue)
+                    this.barHeight += 0.5;
+                else {
+                    HideSlowMoBar = true;
+                    SlowMoPeek = false;
+                }
+            }
+        }
+
+        function changeVel (snakeArray, new_vel) {
+            for (var i = snakeArray.length - 1; i >= 0; i--) {
+                snakeArray[i].vel = new_vel;
+            }
+        }
+
+        function startSlowMo() {
+            SlowMoPeek = false;
+            HideSlowMoBar = false;
+            SlowMoEnterSound.pause();
+            SlowMoEnterSound.play();
+            canv.style.backgroundColor = 'rgb(25, 25, 38)';
+            SlowMo = true;
+            UseSlowMo = true;
+            r_incDecRate = 0.1;
+            changeVel(snake, 1);
+        }
+
+        function StopSlowMo () {
+            sKeyPress = false;
+            if (snake[0].x % 20 == 0 && snake[0].y % 20 == 0) {
+                canv.style.backgroundColor = 'rgb(41, 42, 61)';
+                r_incDecRate = 1;
+                if (!SnakeDied)
+                	sKeyPress = true;
+                stopSlowMo = false;
+                changeVel(snake, 4);
+            }
+            HideSlowMoBar = true;
+        }
+        
+        //Generate Food
+        var food_x, food_y, r = 4, food, SnakeDied = false, EatenTheFood = false;
+        let r_incDecRate = 1;
+
+        function GenerateFood() {
+			food_x = Math.floor(Math.random() * ((canv.width - 20) - 20) + 20);
+			food_x = food_x - (food_x % 20) - 10;
+            food_y = Math.floor(Math.random() * ((canv.height - 20) - 20) + 20);
+            food_y = food_y - (food_y % 20) - 10;
+            
+	        setTimeout(function() {
+	        	if (!SnakeDied) {
+	        		food = true;
+	        		EatenTheFood = false;
+	        		FoodSound.pause();
+	            	FoodSound.play();
+	        	}
+	        }, 1000);
+        }
+
+        function Food(x, y) {
+            c.beginPath();
+            c.arc(x, y, r, 0, 2 * Math.PI, false);
+            c.fillStyle = 'Red';
+            c.fill();
+            if (r < 9 && reduce == false)
+                r += 1*r_incDecRate;
+            if (reduce) {
+                if (r > 6)
+                    r -= 1*r_incDecRate;
+                else {
+                    food = false;
+                    reduce = false;
+                    GenerateFood();
+                    UnshiftSnake();
+                    ValidateScore();
+                    if (SlowMotion.avail < 91 && !UseSlowMo) {
+                        SlowMotion.avail += 10;
+                        SlowMo = true;
+                        SlowMoPeek = true;
+                    }
+                }
+            }
+        }
+
+        var reduce = false;
+        function SnakeAteFood() {
+            reduce = true;
+            SnakeAteFoodSound.pause();
+            SnakeAteFoodSound.play();
+            EatenTheFood = true;
+        }
+
+        function CheckIfSnakeAteFood() {
+            if (snake[snake.length - 1].dx != 0 && snake[snake.length - 1].y == food_y - 10) {
+                    if (snake[snake.length - 1].dx == 1 && snake[snake.length - 1].x > food_x - 30) {
+                        if (snake[snake.length - 1].x - food_x < 0)
+                            SnakeAteFood();
+                    } else if (snake[snake.length - 1].dx == -1 && snake[snake.length - 1].x < food_x + 10) {
+                        if (snake[snake.length - 1].x - food_x > 0)
+                            SnakeAteFood();
+                    }
+                } else if (snake[snake.length - 1].dy != 0 && snake[snake.length - 1].x == food_x - 10) {
+                    if (snake[snake.length - 1].dy == 1 && snake[snake.length - 1].y > food_y - 30) {
+                        if (snake[snake.length - 1].y - food_y < 0)
+                            SnakeAteFood()
+                    } else if (snake[snake.length - 1].dy == -1 && snake[snake.length - 1].y < food_y + 10) {
+                        if (snake[snake.length - 1].y - food_y > 0)
+                            SnakeAteFood();
+                    }
+                }
+        }
+
+        function UnshiftSnake() {
+            var x = snake[0].x;
+            var y = snake[0].y;
+            if (snake[0].dx == 1)
+                x -= 20;
+            else if (snake[0].dx == -1)
+                x += 20;
+            if (snake[0].dy != 0 && snake[0].dy == 1)
+                y -= 20;
+            else if (snake[0].dy == -1)
+                y += 20;
+            var NewBox = new Box(x, y, snake[0].vel);
+            NewBox.dx = snake[0].dx;
+            NewBox.dy = snake[0].dy;
+            NewBox.width = snake[1].width;
+            NewBox.height = snake[0].height;
+            snake[0].turn_id.forEach(function(turn_id) {
+                NewBox.turn_id.push(turn_id);
+            });
+            snake.unshift(NewBox);
+        }
+
+        GenerateFood();
+        
+        var ScoreCoff = 1;
+        //Player Score Record..
+        function ValidateScore() {
+        	ScoreCoff = (snake.length / 100) * 10;
+            if (ScoreCoff < 1)
+                Score += 50;
+            else
+                Score += 50 * ScoreCoff;
+        }
+
+        var Score = 0, HiScore = 0, Game = 0;
+        function DrawScore() {
+            if (snake.length > 30 && !SnakeDied && !Paused)
+        	    Score += ScoreCoff;
+            var ScoreToBeDrawn = Math.floor(Score);
+        	if (HiScore == 0 || Game == 0) {
+        		c.font = '20px ArcadePixel';
+	        	c.fillStyle = 'Black';
+	        	c.fillText('Score  ' + ScoreToBeDrawn, 452 ,32);
+	        	c.fillStyle = 'White';
+	        	c.fillText('Score  ' + ScoreToBeDrawn, 450 ,30);
+	        } else {
+	        	c.font = '20px ArcadePixel';
+	        	c.fillStyle = 'Black';
+	        	c.fillText('Score  ' + ScoreToBeDrawn, 337 ,32);
+	        	c.fillStyle = 'White';
+	        	c.fillText('Score  ' + ScoreToBeDrawn, 335 ,30);
+	        	c.fillStyle = 'Black';
+	        	c.fillText('HI  ' + HiScore, 487 ,32);
+	        	c.fillStyle = 'White';
+	        	c.fillText('HI  ' + HiScore, 485 ,30);
+	        }
+
+        }
+
+        let SnakeKnowsTeleportationJutsu = true;
+        //Check weather the snake is alive or not..
+        function IsSnakeDead() {
+            //Check for his health and his health isurance
+            if (snake[snake.length - 1].x < 0 || snake[snake.length - 1].x > canv.width - 20) {
+                if (SnakeKnowsTeleportationJutsu) {
+	                callUnfortunatelySnakeDied = true;
+	                SnakeDied = true;
+            	}
+            } else if (snake[snake.length - 1].y < 0 || snake[snake.length - 1].y > canv.height - 20) {
+                if (SnakeKnowsTeleportationJutsu) {
+	                callUnfortunatelySnakeDied = true;
+	                SnakeDied = true;
+            	}
+            } for (var i = 1; i < snake.length - 3; i++) {
+                if (snake[i].x == snake[snake.length - 1].x) {
+                    if (snake[snake.length - 1].y == snake[i].y) {
+                        callUnfortunatelySnakeDied = true;
+                        SnakeDied = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        //Restart event
+        let codeIP = [];
+        window.onkeypress = function(e) {
+        	if (e.key == '1' || e.key == '2' || e.key == '3') {
+        		let matchIP = ['1', '2', '3', '1', '1'];
+        		codeIP.push(e.key);
+        		if (e.key != matchIP[codeIP.length - 1])
+        			codeIP.pop();
+
+        		if (codeIP.length == matchIP.length) {
+        			if (SnakeKnowsTeleportationJutsu) {
+        					SnakeKnowsTeleportationJutsu = false;
+        					console.log('Código activado.');
+        					codeIP = [];
+        				} else {
+        					SnakeKnowsTeleportationJutsu = true;
+        					console.log('Código desactivado.');
+        					codeIP = [];
+        				}
+        		}
+        	}
+        	if (e.keyCode == 32 && SnakeDied) {
+                Restart();
+        	}
+        }
+
+        function RandRange(min, max) {
+            return Math.floor(Math.random() * ((max + 1) - min) + min);
+        }
+        
+        var callUnfortunatelySnakeDied = false, gameOverMssg;
+        function UnfortunatelySnakeDied() {
+            EndGameSound.pause();
+            EndGameSound.play();
+
+            for (var i = snake.length - 1; i >= 0; i--) {
+		        if (snake[i].dx != 0)
+		        	snake[i].x = snake[i].x - snake[i].vel*snake[i].dx;
+		        else
+		        	snake[i].y = snake[i].y - snake[i].vel*snake[i].dy;
+	        }
+
+            for(var i = snake.length - 1; i >= 0; i--) {
+                snake[i].dx = 0;
+                snake[i].dy = 0;
+            }
+
+            sKeyPress = false;
+            SnakeDied = true;
+            reduce = false;
+            turn_id = 0;
+            callUnfortunatelySnakeDied = false;
+
+            if (SlowMo) {
+            	UseSlowMo = false;
+            	stopSlowMo = true;
+            }
+
+            if(Score > HiScore)
+                HiScore = Math.floor(Score);
+            console.log('Snake Died  ', 'HI', HiScore);
+
+            var str = [{str: 'Snake Died', x: 120, y: 320}, 
+                       {str: 'Game Over', x: 130, y: 320}, 
+                       {str: 'Ooopsie..', x: 150, y: 320}, 
+                       {str: 'LOL', x: 235, y: 320}, 
+                       {str: 'Hail Hydra', x: 125, y: 320}];
+            gameOverMssg = str[RandRange(0, str.length - 1)];
+        }
+
+        var tsI, count = 0, ch = 0;;
+        function GameOverMssg() {
+            // Game Over Mssg
+            c.font = '70px ArcadePixel';
+	        c.fillStyle = 'Black';
+	        c.fillText(gameOverMssg.str, gameOverMssg.x + 5, gameOverMssg.y + 5);
+	        c.fillStyle = 'white';
+	        c.fillText(gameOverMssg.str, gameOverMssg.x, gameOverMssg.y);
+
+            if (ch > 0) {
+                DrawRestartGameMssg();
+            }
+
+            if (count == 0) {
+                count++;
+                tsI = setInterval(function() {
+                    if (ch >= 0)
+                        ch--;
+                    else
+                        ch = 2;
+                }, 400);
+            }
+        }
+
+        function DrawRestartGameMssg() {
+            c.font = '25px ArcadePixel';
+            c.fillStyle = 'Black';
+            c.fillText('press   space   to   restart   the   game', 97, 382);
+            c.fillStyle = 'White';
+            c.fillText('press   space   to   restart   the   game', 95, 380);
+        }
+        
+        function Restart() {
+        	r = 4;
+            ch = 0;
+            count = 0;
+            Paused = false;
+            allowPaush = true;
+            sKeyPress = true;
+        	SnakeDied = false;
+            stopSlowMo = false;
+            UseSlowMo = false;
+            SlowMoPeek = false;
+            HideSlowMoBar = false;
+        	Score = 0;
+        	Game++;
+            food = false;
+            SlowMotion.avail = 30;
+            clearInterval(tsI);
+            GenerateSnake(5, 4);
+            GenerateFood();
+        }
+
+        //Animate..
+        function AnimateBoxes() {
+            c.clearRect(0, 0, canv.width, canv.height);
+            //Food..
+            if (food) {
+                Food(food_x, food_y);
+                CheckIfSnakeAteFood();
+            }
+
+            //Turn..
+            if(captureTurnCoordinates) {
+                if(snake[snake.length - 1].x % 20 == 0 && snake[snake.length - 1].y % 20 == 0) {
+                    turnPoints.push(new turnPoint(snake[snake.length - 1].x, snake[snake.length - 1].y, keyCode, turn_id));
+                    snake.forEach(function(snake) {
+                        snake.turn_id.push(turn_id);
+                    });
+                    turn_id += 1;
+                    captureTurnCoordinates = false;
+                }
+            }
+            
+            //Snake..
+            for (var i = snake.length - 1; i >= 0; i--) {
+                    snake[i].update();
+                }
+            if (turnPoints.length != 0) {
+                turnPoints.forEach(function(i) {
+                    // c.fillStyle = 'red';
+                    c.fillRect(i.x, i.y, snake[0].width, snake[0].height);
+                });        
+            }
+            
+            //Slow motion
+            if (SlowMo) {
+                if (UseSlowMo)
+                    SlowMotion.UsageUpate();
+                else if (stopSlowMo)
+                    StopSlowMo();
+                
+                if (SlowMoPeek)
+                    SlowMotion.Peek();
+                if (HideSlowMoBar)
+                    SlowMotion.HideBar();
+            }
+
+            DrawScore();
+            IsSnakeDead();
+            fpsCount++;
+            if (Paused)
+            	PauseMssg();
+            if (drawFPS)
+                DrawFrameRate(fps);
+            if (SnakeDied) {
+                if (callUnfortunatelySnakeDied) 
+                    UnfortunatelySnakeDied();
+                GameOverMssg();
+            }
+            requestAnimationFrame(AnimateBoxes);
+        }
+
+        var fpsCount = 0, drawFPS = false ,fps = 60;
+        setInterval(function() {
+            fps = Math.round(fpsCount*2, 2);
+            fpsCount = 0;
+        }, 500);
+
+        function DrawFrameRate(fps) {
+            c.font = '20px ArcadePixel';
+	        c.fillStyle = 'Black';
+	        c.fillText(fps + ' fps', 20 ,32);
+	        c.fillStyle = 'White';
+	        c.fillText(fps + ' fps', 20 ,30);
+        }
+        AnimateBoxes();
+    </script>
+ </body>
+</html>
