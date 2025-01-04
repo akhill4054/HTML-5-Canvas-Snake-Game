@@ -1,12 +1,17 @@
-A snake game made with the help of HTML 5 canvas and JavaScript.
+Simple and cool Snake game, with slow mo, cheat-code, and more! Made using Vanilla JavaScript, HTML5 Canvas, and some simple 2D computer graphics.
 
-Controls:
-Up, down, lft, right arrow keys to turn the snake.
-Press 'S' key to activate slow motion.
-Press 'C' to change the color of the snake.
-Press 'X' to turn ON/OFF auto color change feature.
-Hit Space key to pause the game.
-Press 'F' to display fps.
-You can enter '12311' to make the snake pass through canvas bounds but this feature has bugs!
+`Double click on the html file to start the game`  <br>
+
+🎮 Snake Game Controls 🐍✨
+
+➡️⬅️⬆️⬇️: Steer the snake! <br>
+🐢 Press 'S': Slow-mo mode ON! <br>
+🎨 Press 'C': Switch snake colors! <br>
+🌈 Press 'X': Toggle auto color change. <br>
+⏸️ Hit Space: Pause the game. <br>
+⚡ Press 'F': Show FPS. <br>
+🌀 Enter '12311': Enable canvas-bound passing (⚠️ Buggy!). <br>
+
+Get ready to slither in style! 🕹️  <br>
 
 'Font and sounds don't belong to me.'
