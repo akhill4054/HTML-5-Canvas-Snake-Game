@@ -15,3 +15,6 @@ Simple and cool Snake game, with slow mo, cheat-code, and more! Made using Vanil
 Get ready to slither in style! 🕹️  <br>
 
 'Font and sounds don't belong to me.'
+
+## Gameplay Demo Video
+https://github.com/user-attachments/assets/e8a6141a-04c9-4f0d-81be-794c2ade89ad
